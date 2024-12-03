@@ -2,13 +2,17 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_NAME = 'selenium_tests' // Define your project name
-        HUB_PORT = '4444'          // Port for Selenium Hub
+        PROJECT_NAME = 'selenium_tests'         // Define your project name
+        HUB_PORT = '4444'                      // Port for Selenium Hub
+        GRID_TIMEOUT = '30'                    // Timeout for Selenium Grid
+        GRID_MAX_SESSION = '10'                // Max sessions for Selenium Grid
+        ENV_FILE = './environment/Dev.env'     // Path to environment file
     }
 
     stages {
         stage('Clone Repository') {
             steps {
+                // Clone the GitHub repository
                 checkout scm
             }
         }
@@ -17,8 +21,10 @@ pipeline {
             steps {
                 script {
                     // Ensure Docker Compose is installed on the Jenkins agent
-                    sh 'docker-compose down || true' // Cleanup if already running
-                    sh 'docker-compose up -d'
+                    sh '''
+                        docker-compose down || true        // Cleanup any existing services
+                        docker-compose up -d              // Start services in detached mode
+                    '''
                 }
             }
         }
@@ -26,8 +32,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Run the test container
-                    sh 'docker exec ${PROJECT_NAME}_app-environment pytest'
+                    // Execute tests inside the app environment container
+                    sh "docker exec ${PROJECT_NAME}_app-environment pytest"
                 }
             }
         }
@@ -45,10 +51,9 @@ pipeline {
     post {
         always {
             echo 'Pipeline execution completed.'
-        }
-        cleanup {
             script {
-                sh 'docker-compose down'
+                // Ensure all services are stopped
+                sh 'docker-compose down || true'
             }
         }
     }
