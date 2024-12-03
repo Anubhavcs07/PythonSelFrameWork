@@ -1,0 +1,7 @@
+selenium==4.26.1             # Web automation library
+pytest==8.3.3                # Test framework
+pytest-html==4.1.1           # HTML report generation
+pytest-xdist==3.6.1          # For parallel test execution
+webdriver-manager==4.0.2     # Automatically manage browser drivers
+requests==2.32.3             # HTTP requests (if API testing is included)
+python-dotenv==1.0.1          # Python environment
