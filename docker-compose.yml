@@ -1,0 +1,65 @@
+#version: "2.29.7-desktop.1"  # Use the latest version for broader compatibility and features
+services:
+  selenium-hub:
+    image: selenium/hub:latest
+    container_name: ${PROJECT_NAME}_selenium-hub
+    ports:
+      - "${HUB_PORT:-4444}:${HUB_PORT:-4444}"
+    environment:
+      - GRID_TIMEOUT=${GRID_TIMEOUT:-30}
+      - GRID_MAX_SESSION=${GRID_MAX_SESSION:-10}
+      - JAVA_OPTS=${JAVA_OPTS:--Dotel.java.global-autoconfigure.enabled=false -Dotel.traces.exporter=none}
+    networks:
+      - selenium-grid
+
+  chrome-node:
+    image: selenium/node-chrome:latest
+    container_name: ${PROJECT_NAME}_chrome-node
+    shm_size: 2g
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=${PROJECT_NAME}_selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - JAVA_OPTS=${JAVA_OPTS:--Dotel.java.global-autoconfigure.enabled=false -Dotel.traces.exporter=none}
+    networks:
+      - selenium-grid
+
+  firefox-node:
+    image: selenium/node-firefox:latest
+    container_name: ${PROJECT_NAME}_firefox-node
+    shm_size: 2g
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=${PROJECT_NAME}_selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - JAVA_OPTS=${JAVA_OPTS:--Dotel.java.global-autoconfigure.enabled=false -Dotel.traces.exporter=none}
+    networks:
+      - selenium-grid
+
+  app-environment:
+    image: python:3.11-slim
+    container_name: ${PROJECT_NAME}_app-environment
+    env_file:
+      - ${ENV_FILE:-./environment/Dev.env}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["pytest", '--collect-only']
+    depends_on:
+      - selenium-hub
+    volumes:
+      - .:/app
+    working_dir: /app/test
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      - selenium-grid
+    restart: always
+
+networks:
+  selenium-grid:
+    driver: bridge
